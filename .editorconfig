@@ -1,0 +1,26 @@
+# EditorConfig for XDB-Project (C Language Standard)
+# https://editorconfig.org
+
+root = true
+
+# Global settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Specific settings for C source and header files
+[*.{c,h}]
+indent_style = space
+indent_size = 4
+
+# Keep specific formatting for Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# Use 2 spaces for YAML/JSON configurations if any
+[*.{yml,yaml,json}]
+indent_size = 2

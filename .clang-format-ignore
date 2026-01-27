@@ -1,0 +1,6 @@
+# XDB-Project Clang-Format Ignore Configuration
+# This file specifies files and directories that should be excluded from style checks.
+# Documentation: https://clang.llvm.org/docs/ClangFormat.html
+
+# Exclude the unit test framework due to sensitive macro alignment
+tests/framework.h

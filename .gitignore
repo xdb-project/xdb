@@ -1,0 +1,82 @@
+# XDB-Project Git Ignore Configuration
+# This configuration ensures that temporary files and build artifacts are not tracked.
+# Documentation: https://git-scm.com/docs/gitignore
+
+# Compiled Binaries and Objects
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+
+# Build Directories
+build/
+bin/
+obj/
+dist/
+
+# Runtime Data
+# Database files for production and testing
+# Keep directory structure but ignore actual data
+data/*.json
+data/*.db
+data/*.tmp
+!data/.gitkeep
+
+# Operating System Specific Files
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.Trashes
+*.icloud
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# IDE and Editor Private Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# .clang-format-ignore
+
+# Environment Variables
+# Local and environment-specific configuration files
+# .env
+# .env.*
+# !.env.example
+
+# Dependencies
+# Submodules are managed by .gitmodules, but their build artifacts should be ignored
+third_party/*/build/
+third_party/*/bin/
+
+# Logs and Temporary Files
+*.log
+*.tmp
+*.temp

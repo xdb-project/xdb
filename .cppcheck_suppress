@@ -1,0 +1,16 @@
+# XDB-Project Cppcheck Suppression Configuration
+# This file silences non-critical style warnings to maintain a clean CI pipeline.
+# Documentation: https://cppcheck.sourceforge.io/manual.pdf
+
+# Logic and Redundancy
+# Known condition false positives in specific database logic
+knownConditionTrueFalse:src/database.c
+
+# Variable Scope
+# Intentional scope declarations for specific buffer handling
+variableScope:src/utils.c
+
+# Type Qualifiers
+# Low priority const-pointer suggestions for server and utility modules
+constVariablePointer:src/server.c
+constVariablePointer:src/utils.c

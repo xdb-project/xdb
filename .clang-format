@@ -1,0 +1,39 @@
+# XDB-Project Clang-Format Configuration
+# This configuration ensures a consistent C coding style across the repository.
+# Documentation: https://clang.llvm.org
+
+BasedOnStyle: LLVM
+
+# Language Standard
+Language: Cpp
+# Standard: c11
+
+# Indentation and Spacing
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+IndentCaseLabels: true
+
+# Brace Handling
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeElse: false
+  BeforeCatch: false
+  IndentBraces: false
+
+# Spacing
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+
+# Organization
+IncludeBlocks: Regroup
+SortIncludes: true

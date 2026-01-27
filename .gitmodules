@@ -1,0 +1,11 @@
+# XDB-Project Submodule Configuration
+# Documentation: https://github.com/xdb-project/xdb
+
+# Dependency: cJSON
+# Description: Ultralightweight JSON parser in ANSI C
+# Source: https://github.com/DaveGamble/cJSON
+[submodule "third_party/cJSON"]
+	path = third_party/cJSON
+	url = https://github.com/DaveGamble/cJSON.git
+    branch = master
+    update = checkout
