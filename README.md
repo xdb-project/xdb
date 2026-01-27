@@ -10,8 +10,6 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![POSIX](https://img.shields.io/badge/POSIX-Compliant-success.svg)](https://en.wikipedia.org/wiki/POSIX)
 
-**[Quick Start](#quick-start) • [Installation](#installation) • [API Reference](#api-documentation) • [Testing](#testing) • [Contributing](CONTRIBUTING.md) • [Changelog](CHANGELOG.md)**
-
 </div>
 
 ---
