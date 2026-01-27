@@ -1,14 +1,16 @@
-# XDB - High-Performance NoSQL Database in C
+# XDB
 
-> A lightweight, thread-safe, document-oriented database written in pure C with JSON storage, concurrent client handling, and persistent disk-based storage.
+### *High-Performance Document-Oriented NoSQL Database*
+
+XDB is a lightweight, thread-safe database engine written in **pure C99**. Designed for efficiency and reliability, it features high-concurrency client handling, robust JSON-based document storage, and persistent disk-based recovery.
 
 <div align="center">
 
-[![Language](https://img.shields.io/badge/language-C99-blue.svg)](https://en.wikipedia.org/wiki/C99)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#build--run)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
-[![POSIX](https://img.shields.io/badge/POSIX-Compliant-success.svg)](https://en.wikipedia.org/wiki/POSIX)
+![C99](https://img.shields.io/badge/Language-C99-blue.svg?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat-square)
+![POSIX](https://img.shields.io/badge/POSIX-Compliant-orange.svg?style=flat-square)
 
 </div>
 
