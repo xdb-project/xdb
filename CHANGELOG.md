@@ -4,6 +4,14 @@ All notable changes to the **XDB-Project** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-29
+
+### Added
+- **Snapshot System**: Added Auto-Snapshotting every 5 writes and Manual Snapshot action via TCP (`{"action": "snapshot"}`).
+
+### Fixed
+- **Empty Request Handling** Added a filter to ignore whitespace-only or empty newline messages from clients
+
 ## [1.0.0] - 2026-01-27
 
 ### Added

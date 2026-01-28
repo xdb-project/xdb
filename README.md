@@ -9,7 +9,7 @@ XDB is a lightweight, thread-safe database engine written in **pure C99**. Desig
 ![C99](https://img.shields.io/badge/Language-C99-blue.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg?style=flat-square)
 ![POSIX](https://img.shields.io/badge/POSIX-Compliant-orange.svg?style=flat-square)
 
 </div>
@@ -38,6 +38,7 @@ XDB is a production-ready NoSQL database implementation written in pure C, desig
 - Pure C implementation with zero external runtime dependencies (except cJSON for JSON parsing)
 - Multi-threaded architecture supporting concurrent client connections
 - Automatic persistence with JSON-based storage
+- Database Snapshotting Built-in mechanism for capturing point-in-time state snapshots to support secure backups and recover
 - Custom query engine with exact-match semantics
 - Comprehensive test suite with custom testing framework
 - Memory-safe implementation with proper resource cleanup
@@ -55,6 +56,7 @@ XDB is a production-ready NoSQL database implementation written in pure C, desig
 | **Memory Safety** | Manual memory management with proper cleanup and leak prevention |
 | **Signal Handling** | Graceful shutdown via SIGINT with automatic data persistence |
 | **IPv6 Support** | Dual-stack networking for IPv4 and IPv6 connections |
+| **Database Snapshotting** | Mechanism for capturing point-in-time state snapshots to support secure backups and recover |
 
 ---
 
@@ -519,7 +521,29 @@ Removes a document by its unique identifier.
 
 ---
 
-### 5. Exit Connection
+### 5. Manual Snapshot (Backup)
+
+Triggers an immediate backup of the current database state into the data/ directory. This creates a "restore point" by copying the entire database into a new JSON file with a precise timestamp.
+
+**Request:**
+
+```json
+{
+  "action": "snapshot"
+}
+```
+**Response:**
+
+```json
+{
+  "status": "ok",
+  "message": "Snapshot created successfully",
+  "data": null
+```
+
+---
+
+### 6. Exit Connection
 
 Gracefully closes the TCP connection.
 

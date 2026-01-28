@@ -4,7 +4,7 @@
  *
  * This module manages the networking layer, handling dual-stack (IPv4/IPv6)
  * socket management, concurrent client requests via POSIX threads,
- * and the JSON-based communication protocol.
+ * and the JSON-based communication protocol and snapshot management.
  */
 
 #include "../include/server.h"
@@ -148,7 +148,12 @@ void *handle_client(void *arg)
             }
 
             /* Command Routing Logic */
-            if (strlen(coll_str) == 0) {
+            if (strcmp(act_str, "snapshot") == 0) {
+                /* Trigger a manual backup snapshot */
+                db_force_snapshot();
+                utils_log("INFO", "Manual snapshot triggered");
+                send_response(sock, 200, "Snapshot created successfully", NULL);
+            } else if (strlen(coll_str) == 0) {
                 send_response(sock, 400, "Missing 'collection'", NULL);
             } else if (strcmp(act_str, "insert") == 0) {
                 cJSON *data = cJSON_DetachItemFromObject(req, "data");

@@ -11,6 +11,7 @@ knownConditionTrueFalse:src/database.c
 variableScope:src/utils.c
 
 # Type Qualifiers
-# Low priority const-pointer suggestions for server and utility modules
+# Low priority const-pointer suggestions for database, server, and utility modules
+constVariablePointer:src/database.c
 constVariablePointer:src/server.c
 constVariablePointer:src/utils.c

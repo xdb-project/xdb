@@ -3,7 +3,7 @@
  * @brief Secure storage engine implementation for the Database system.
  *
  * Implements a thread-safe, JSON-backed document database with atomic
- * write-to-disk capabilities to ensure data integrity.
+ * write-to-disk capabilities and automatic snapshotting.
  */
 
 #include "../include/database.h"
@@ -22,12 +22,52 @@
 static char g_db_path[256];                              /**< Destination file path on disk. */
 static cJSON *root = NULL;                               /**< In-memory representation of the DB. */
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; /**< Monitor for thread safety. */
+static int g_op_counter = 0;                             /**< Counter to trigger snapshots. */
+
+/**
+ * @brief Creates a physical copy of the current database file with a timestamp.
+ * * Provides a "restore point" by copying the production file to a new
+ * timestamped file in the data directory.
+ * * @note This is an internal helper called by _save_internal and db_force_snapshot.
+ */
+static void _create_snapshot(void)
+{
+    char backup_path[512];
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+
+    /* Generate filename format: data/backup_YYYYMMDD_HHMM.json */
+    snprintf(backup_path, sizeof(backup_path), "data/backup_%04d%02d%02d_%02d%02d.json",
+             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min);
+
+    FILE *src = fopen(g_db_path, "rb");
+    FILE *dst = fopen(backup_path, "wb");
+
+    if (src && dst) {
+        char buf[8192];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), src)) > 0) {
+            fwrite(buf, 1, n, dst);
+        }
+
+        char log_msg[600];
+        snprintf(log_msg, sizeof(log_msg), "Snapshot created: %s", backup_path);
+        utils_log("INFO", log_msg);
+    }
+
+    if (src)
+        fclose(src);
+    if (dst)
+        fclose(dst);
+}
 
 /**
  * @brief Persist database state to disk using an atomic write pattern.
- * * Writes data to a temporary file first and then performs a rename operation.
- * This prevents data corruption in the event of a system crash during the write.
- * * @note This is an internal helper and does not handle its own locking.
+ *
+ * Writes data to a temporary file first and then performs a rename operation.
+ * Also triggers a snapshot every 5 successful write operations.
+ *
+ * @note This is an internal helper and does not handle its own locking.
  */
 static void _save_internal(void)
 {
@@ -48,7 +88,14 @@ static void _save_internal(void)
         fclose(fp);
 
         /* Atomic swap of temporary file with actual file */
-        if (rename(tmp_path, g_db_path) != 0) {
+        if (rename(tmp_path, g_db_path) == 0) {
+            /* Trigger snapshotting logic every 5 operations */
+            g_op_counter++;
+            if (g_op_counter >= 5) {
+                _create_snapshot();
+                g_op_counter = 0;
+            }
+        } else {
             perror("Failed to replace database file");
         }
     } else {
@@ -59,8 +106,6 @@ static void _save_internal(void)
 
 /**
  * @brief Initializes the database engine and loads existing data.
- * * Sets up the storage path, seeds the random generator for UUIDs,
- * and parses the existing JSON file if present.
  *
  * @param[in] filepath Path to the JSON storage file.
  */
@@ -93,7 +138,6 @@ void db_init(const char *filepath)
         utils_log("INFO", msg);
     }
 
-    /* Fallback if file is missing or empty */
     if (!root) {
         root = cJSON_CreateObject();
         utils_log("INFO", "Initialized new database instance");
@@ -103,7 +147,6 @@ void db_init(const char *filepath)
 
 /**
  * @brief Shuts down the database engine.
- * * Safely releases the cJSON root object and nullifies the pointer.
  */
 void db_cleanup(void)
 {
@@ -116,8 +159,18 @@ void db_cleanup(void)
 }
 
 /**
+ * @brief Forces an immediate snapshot of the current database state.
+ * * Manually triggers the creation of a restore point.
+ */
+void db_force_snapshot(void)
+{
+    pthread_mutex_lock(&lock);
+    _create_snapshot();
+    pthread_mutex_unlock(&lock);
+}
+
+/**
  * @brief Removes all collections and stored data.
- * * Resets the root object and immediately triggers an atomic disk save.
  */
 void db_drop_all(void)
 {
@@ -132,7 +185,6 @@ void db_drop_all(void)
 
 /**
  * @brief Inserts a document into a collection.
- * * Automatically ensures a unique `_id` is present and persists changes to disk.
  *
  * @param[in] coll_name Target collection name.
  * @param[in] data      JSON object representing the document.
@@ -165,7 +217,6 @@ bool db_insert(const char *coll_name, cJSON *data)
 
 /**
  * @brief Query documents from a collection.
- * * Iterates through the collection and returns duplicates of matching items.
  *
  * @param[in] coll_name Target collection name.
  * @param[in] query     JSON object defining query conditions.
@@ -197,7 +248,8 @@ cJSON *db_find(const char *coll_name, cJSON *query, int limit)
 
 /**
  * @brief Delete a document by its unique identifier.
- * * @param[in] coll_name Target collection name.
+ *
+ * @param[in] coll_name Target collection name.
  * @param[in] id        Document `_id` value.
  * @return true if the document was found and deleted, false otherwise.
  */
@@ -226,8 +278,9 @@ bool db_delete(const char *coll_name, const char *id)
 
 /**
  * @brief Counts documents in a collection.
- * * @param[in] coll_name Target collection name.
- * @return int Total document count or 0 if collection does not exist.
+ *
+ * @param[in] coll_name Target collection name.
+ * @return int Total document count.
  */
 int db_count(const char *coll_name)
 {
