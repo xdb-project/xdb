@@ -246,12 +246,87 @@ sudo systemctl status xdb
 sudo journalctl -u xdb -f
 ```
 
-**PM2 Process Manager:**
+**PM2 Process Manager**
+```javascript
+// Create `ecosystem.config.js` in your XDB root directory:
+
+module.exports = {
+  apps: [
+    {
+      name: 'xdb',
+      script: './bin/xdb',
+      instances: 1,
+      exec_mode: 'fork',
+      interpreter: 'none',
+      
+      env: {
+        NODE_ENV: 'development',
+        XDB_PORT: 8080,
+        XDB_HOST: '0.0.0.0'
+      },
+      
+      env_production: {
+        NODE_ENV: 'production',
+        XDB_PORT: 8080
+      },
+      
+      restart_delay: 4000,
+      max_memory_restart: '1G',
+      error_file: './logs/pm2-error.log',
+      out_file: './logs/pm2-out.log',
+      kill_timeout: 5000,
+      wait_ready: true,
+      listen_timeout: 3000
+    }
+  ]
+};
+```
+
+Install PM2 globally
+
 ```bash
 npm install -g pm2
-pm2 start ./bin/xdb --name xdb --interpreter none
+
+# or
+pnpm add -g pm2
+```
+
+Start and manage XDB:
+
+```bash
+# Start XDB with PM2
+pm2 start ecosystem.config.js
+
+# Save configuration
 pm2 save
+
+# Enable auto-startup on system reboot
 pm2 startup
+pm2 save
+
+# View running processes
+pm2 list
+
+# Monitor in real-time
+pm2 monit
+
+# View logs
+pm2 logs xdb
+pm2 logs xdb -f          # Real-time log streaming
+pm2 logs xdb --lines 100 # Last 100 lines
+
+# Manage processes
+pm2 restart xdb  # Force restart
+pm2 reload xdb   # Graceful restart (zero-downtime)
+pm2 stop xdb     # Stop process
+pm2 delete xdb   # Remove from PM2
+
+# Check detailed information
+pm2 info xdb
+pm2 env xdb
+
+# Disable auto-startup (if needed)
+pm2 unstartup systemd
 ```
 
 ---
