@@ -197,11 +197,53 @@ make test VERBOSE=1
 For production environments, consider using:
 
 **Systemd Service (Linux):**
+```ini
+# Create `/etc/systemd/system/xdb.service`:
+
+[Unit]
+Description=XDB High-Performance NoSQL Database Server
+After=network.target
+
+[Service]
+Type=simple
+User=xdb
+WorkingDirectory=/opt/xdb
+ExecStart=/opt/xdb/bin/xdb
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Set up a secure environment and permissions for the XDB service:
+
 ```bash
-# Create /etc/systemd/system/xdb.service
-sudo systemctl enable xdb
-sudo systemctl start xdb
+# Create a dedicated system user for XDB (no login shell for security)
+sudo useradd -r -s /usr/bin/nologin xdb
+
+# Set ownership to the xdb user and adjust directory permissions
+sudo chown -R xdb:xdb /opt/xdb
+sudo chmod -R 755 /opt/xdb
+
+# Grant execution permissions to the XDB binary
+sudo chmod +x /opt/xdb/bin/xdb
+```
+
+Then manage with:
+
+```bash
+# Reload systemd manager configuration
+sudo systemctl daemon-reload
+
+# Enable service to start on boot and start it now
+sudo systemctl enable --now xdb
+
+# Check current service status
 sudo systemctl status xdb
+
+# Monitor real-time logs
+sudo journalctl -u xdb -f
 ```
 
 **PM2 Process Manager:**
