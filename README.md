@@ -9,7 +9,7 @@ XDB is a lightweight, thread-safe database engine written in **pure C99**. Desig
 ![C99](https://img.shields.io/badge/Language-C99-blue.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.3.0-blue.svg?style=flat-square)
 ![POSIX](https://img.shields.io/badge/POSIX-Compliant-orange.svg?style=flat-square)
 
 </div>
@@ -469,7 +469,81 @@ Queries documents in a collection with optional filtering and pagination.
 
 ---
 
-### 3. Count Documents
+### 3. Update Document
+
+Modifies an existing document based on its unique ID. If the ID is not found, the server returns a 404 error.
+
+**Request:**
+```json
+{
+  "action": "update",
+  "collection": "users",
+  "id": "a1b2c3d4e5f6g7h8",
+  "data": {
+    "name": "Alice Updated",
+    "status": "active"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "message": "Document updated"
+}
+```
+
+**Parameters:**
+- `id` (string, required): The unique _id of the target document.
+- `data` (object, required): New fields to replace or add. The system automatically preserves the original _id.
+
+---
+
+### 4. Upsert (Update or Insert)
+
+A smart operation that updates a document if the ID exists, or creates a new one if the ID is missing or not found.
+
+**Request (Update Scenario):**
+```json
+{
+  "action": "upsert",
+  "collection": "users",
+  "id": "a1b2c3d4e5f6g7h8",
+  "data": {
+    "name": "Alice Upserted",
+    "score": 99
+  }
+}
+```
+
+**Request (Insert Scenario):**
+```json
+{
+  "action": "upsert",
+  "collection": "users",
+  "id": "new-id-999",
+  "data": {
+    "name": "New User",
+    "score": 50
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "message": "Upsert successful"
+}
+```
+
+**Note:**
+For `upsert`, if the `id` provided does not exist in the collection, the system will treat the request as a new Insert operation using the provided data.
+
+---
+
+### 5. Count Documents
 
 Returns the total count of documents matching optional criteria.
 
@@ -497,7 +571,7 @@ Returns the total count of documents matching optional criteria.
 
 ---
 
-### 4. Delete Document
+### 6. Delete Document
 
 Removes a document by its unique identifier.
 
@@ -521,7 +595,7 @@ Removes a document by its unique identifier.
 
 ---
 
-### 5. Manual Snapshot (Backup)
+### 7. Manual Snapshot (Backup)
 
 Triggers an immediate backup of the current database state into the data/ directory. This creates a "restore point" by copying the entire database into a new JSON file with a precise timestamp.
 
@@ -543,7 +617,7 @@ Triggers an immediate backup of the current database state into the data/ direct
 
 ---
 
-### 6. Exit Connection
+### 8. Exit Connection
 
 Gracefully closes the TCP connection.
 

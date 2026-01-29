@@ -300,6 +300,75 @@ cJSON *db_find(const char *coll_name, cJSON *query, int limit)
 }
 
 /**
+ * @brief Updates an existing document in a collection.
+ *
+ * @param[in] coll_name Target collection name.
+ * @param[in] id        Document `_id` value.
+ * @param[in] data      New JSON object to replace the existing document.
+ * @return true if updated, false if the ID was not found.
+ */
+bool db_update(const char *coll_name, const char *id, cJSON *data)
+{
+    if (!data || !id)
+        return false;
+
+    pthread_mutex_lock(&lock);
+
+    /* Fast check via index for O(1) existence verification */
+    if (!cJSON_HasObjectItem(g_index, id)) {
+        pthread_mutex_unlock(&lock);
+        return false;
+    }
+
+    cJSON *coll = cJSON_GetObjectItem(root, coll_name);
+    if (coll) {
+        int idx = 0;
+        cJSON *item = NULL;
+        cJSON_ArrayForEach(item, coll)
+        {
+            cJSON *itemId = cJSON_GetObjectItem(item, "_id");
+            if (cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
+                /* Ensure _id is preserved in the new data object */
+                cJSON_DeleteItemFromObject(data, "_id");
+                cJSON_AddStringToObject(data, "_id", id);
+
+                /* Replace in array and synchronize index */
+                cJSON_ReplaceItemInArray(coll, idx, cJSON_Duplicate(data, 1));
+                cJSON_DeleteItemFromObject(g_index, id);
+                cJSON_AddItemToObject(g_index, id, cJSON_Duplicate(data, 1));
+
+                _save_internal();
+                pthread_mutex_unlock(&lock);
+                return true;
+            }
+            idx++;
+        }
+    }
+
+    pthread_mutex_unlock(&lock);
+    return false;
+}
+
+/**
+ * @brief Updates an existing document or inserts it if not found.
+ *
+ * @param[in] coll_name Target collection name.
+ * @param[in] id        Document `_id` value (optional for insert).
+ * @param[in] data      JSON object representing the document.
+ * @return true on success.
+ */
+bool db_upsert(const char *coll_name, const char *id, cJSON *data)
+{
+    /* If ID is provided, try updating first */
+    if (id && db_update(coll_name, id, data)) {
+        return true;
+    }
+
+    /* If update fails or ID is NULL, perform insert */
+    return db_insert(coll_name, data);
+}
+
+/**
  * @brief Delete a document by its unique identifier.
  *
  * @param[in] coll_name Target collection name.

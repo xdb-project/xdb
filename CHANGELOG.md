@@ -4,6 +4,18 @@ All notable changes to the **XDB-Project** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-30
+
+### Added
+- **Atomic Update**: Implemented `db_update` function for efficient document updates without altering the `_id`.
+- **Upsert Logic**: Introduced `db_upsert` function to automatically determine whether to perform an insert or update based on ID existence.
+- **Protocol Extension**: Integrated `update` and `upsert` actions into `server.c` for network-layer access.
+- **Regression Tests**: Added new test cases in `test_crud.c` to verify data update workflows.
+
+### Fixed
+- **Compiler Warnings**: Added `<stdlib.h>` header in unit tests to resolve implicit `free()` declaration issues.
+- **Test Compatibility**: Replaced `ASSERT_STR_EQ` macro with standard `strcmp` in `test_crud.c` to ensure compilation stability.
+
 ## [1.2.0] - 2026-01-29
 
 ### Added

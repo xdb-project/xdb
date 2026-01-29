@@ -72,6 +72,32 @@ bool db_insert(const char *collection, cJSON *data);
 cJSON *db_find(const char *collection, cJSON *query, int limit);
 
 /**
+ * @brief Updates an existing document in a collection.
+ *
+ * Replaces the data of a document identified by its unique `_id`.
+ * The `_id` field in the new data will be enforced from the existing document.
+ *
+ * @param[in] collection The name of the target collection.
+ * @param[in] id         The unique `_id` string of the document to update.
+ * @param[in] data       A cJSON object containing the updated document data.
+ * @return true if the document was found and updated, false otherwise.
+ */
+bool db_update(const char *collection, const char *id, cJSON *data);
+
+/**
+ * @brief Updates an existing document or inserts it if not found.
+ *
+ * If a document with the given `id` exists, it performs an update.
+ * If it does not exist, it inserts the data as a new document.
+ *
+ * @param[in] collection The name of the target collection.
+ * @param[in] id         The unique `_id` string of the document (can be NULL for forced insert).
+ * @param[in] data       A cJSON object representing the document data.
+ * @return true on successful update or insertion, false otherwise.
+ */
+bool db_upsert(const char *collection, const char *id, cJSON *data);
+
+/**
  * @brief Deletes a document by its unique identifier.
  *
  * @param[in] collection The name of the target collection.
