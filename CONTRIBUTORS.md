@@ -1,6 +1,6 @@
 # Contributors
 
-All contributors to **XDB-Project** are highly valued. This list recognizes those who have helped us reach our **v1.1.0 milestone** and beyond.
+All contributors to **XDB-Project** are highly valued. This list recognizes those who have helped us reach our **v1.2.0 milestone** and beyond.
 
 ## Project Founder
 *   **Ananda Firmansyah** ([@firrthecreator](https://github.com/firrthecreator))

@@ -3,7 +3,7 @@
  * @brief Secure storage engine implementation for the Database system.
  *
  * Implements a thread-safe, JSON-backed document database with atomic
- * write-to-disk capabilities and automatic snapshotting.
+ * write-to-disk capabilities, automatic snapshotting, and fast indexing.
  */
 
 #include "../include/database.h"
@@ -21,8 +21,34 @@
  */
 static char g_db_path[256];                              /**< Destination file path on disk. */
 static cJSON *root = NULL;                               /**< In-memory representation of the DB. */
+static cJSON *g_index = NULL;                            /**< Global index for O(1) ID lookups. */
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; /**< Monitor for thread safety. */
 static int g_op_counter = 0;                             /**< Counter to trigger snapshots. */
+
+/**
+ * @brief Rebuilds the in-memory index for fast lookups.
+ * @note Must be called within a locked mutex context.
+ */
+static void _rebuild_index(void)
+{
+    if (g_index)
+        cJSON_Delete(g_index);
+    g_index = cJSON_CreateObject();
+
+    cJSON *coll = root->child;
+    while (coll) {
+        cJSON *doc = coll->child;
+        while (doc) {
+            cJSON *id = cJSON_GetObjectItem(doc, "_id");
+            if (id && id->valuestring) {
+                /* Fixed: Changed to Deep Copy (1) to ensure index stability */
+                cJSON_AddItemToObject(g_index, id->valuestring, cJSON_Duplicate(doc, 1));
+            }
+            doc = doc->next;
+        }
+        coll = coll->next;
+    }
+}
 
 /**
  * @brief Creates a physical copy of the current database file with a timestamp.
@@ -34,7 +60,7 @@ static void _create_snapshot(void)
 {
     char backup_path[512];
     time_t now = time(NULL);
-    struct tm *t = localtime(&now);
+    const struct tm *t = localtime(&now);
 
     /* Generate filename format: data/backup_YYYYMMDD_HHMM.json */
     snprintf(backup_path, sizeof(backup_path), "data/backup_%04d%02d%02d_%02d%02d.json",
@@ -132,16 +158,20 @@ void db_init(const char *filepath)
             }
         }
         fclose(fp);
-
-        char msg[512];
-        snprintf(msg, sizeof(msg), "Storage loaded from: %s", g_db_path);
-        utils_log("INFO", msg);
     }
 
     if (!root) {
         root = cJSON_CreateObject();
         utils_log("INFO", "Initialized new database instance");
     }
+
+    /* Build index for the first time */
+    _rebuild_index();
+
+    char msg[512];
+    snprintf(msg, sizeof(msg), "Storage loaded and indexed from: %s", g_db_path);
+    utils_log("INFO", msg);
+
     pthread_mutex_unlock(&lock);
 }
 
@@ -154,6 +184,10 @@ void db_cleanup(void)
     if (root) {
         cJSON_Delete(root);
         root = NULL;
+    }
+    if (g_index) {
+        cJSON_Delete(g_index);
+        g_index = NULL;
     }
     pthread_mutex_unlock(&lock);
 }
@@ -177,8 +211,11 @@ void db_drop_all(void)
     pthread_mutex_lock(&lock);
     if (root)
         cJSON_Delete(root);
+    if (g_index)
+        cJSON_Delete(g_index);
 
     root = cJSON_CreateObject();
+    g_index = cJSON_CreateObject();
     _save_internal();
     pthread_mutex_unlock(&lock);
 }
@@ -209,6 +246,10 @@ bool db_insert(const char *coll_name, cJSON *data)
         free(uuid);
     }
 
+    /* Update index before saving */
+    cJSON *id = cJSON_GetObjectItem(data, "_id");
+    cJSON_AddItemToObject(g_index, id->valuestring, cJSON_Duplicate(data, 1));
+
     cJSON_AddItemToArray(coll, data);
     _save_internal();
     pthread_mutex_unlock(&lock);
@@ -226,9 +267,21 @@ bool db_insert(const char *coll_name, cJSON *data)
 cJSON *db_find(const char *coll_name, cJSON *query, int limit)
 {
     pthread_mutex_lock(&lock);
-    cJSON *coll = cJSON_GetObjectItem(root, coll_name);
     cJSON *result = cJSON_CreateArray();
 
+    /* Fast Path: If query is specifically for an _id, use the index */
+    cJSON *query_id = cJSON_GetObjectItem(query, "_id");
+    if (query_id && cJSON_IsString(query_id)) {
+        cJSON *found = cJSON_GetObjectItem(g_index, query_id->valuestring);
+        if (found) {
+            cJSON_AddItemToArray(result, cJSON_Duplicate(found, 1));
+            pthread_mutex_unlock(&lock);
+            return result;
+        }
+    }
+
+    /* Slow Path: Linear scan for other fields */
+    cJSON *coll = cJSON_GetObjectItem(root, coll_name);
     if (coll) {
         int count = 0;
         cJSON *item = NULL;
@@ -264,6 +317,9 @@ bool db_delete(const char *coll_name, const char *id)
         {
             cJSON *itemId = cJSON_GetObjectItem(item, "_id");
             if (cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
+                /* Remove from index */
+                cJSON_DeleteItemFromObject(g_index, id);
+
                 cJSON_DeleteItemFromArray(coll, idx);
                 _save_internal();
                 pthread_mutex_unlock(&lock);

@@ -4,13 +4,25 @@ All notable changes to the **XDB-Project** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-29
+
+### Added
+- **Basic Indexing**: Implemented an in-memory Hash Map (O(1) Lookups) for _id fields to replace linear scans during ID-based queries.
+- **Index Synchronization**: Automatic index updates on document insertion and deletion to ensure data consistency.
+
+### Improved
+- **Search Performance**: Significant latency reduction for large datasets when querying by unique identifier.
+
+### Fixed
+- **Deep Copy Indexing**: Resolved empty data return in `db_find` by implementing Deep Copy indexing to ensure data persistence during retrieval.
+
 ## [1.1.0] - 2026-01-29
 
 ### Added
 - **Snapshot System**: Added Auto-Snapshotting every 5 writes and Manual Snapshot action via TCP (`{"action": "snapshot"}`).
 
 ### Fixed
-- **Empty Request Handling** Added a filter to ignore whitespace-only or empty newline messages from clients
+- **Empty Request Handling**: Added a filter to ignore whitespace-only or empty newline messages from clients
 
 ## [1.0.0] - 2026-01-27
 
