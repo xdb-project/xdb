@@ -4,6 +4,14 @@ All notable changes to the **XDB-Project** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-01-31
+
+### Fixed (Stability & Memory Integrity)
+- **Atomic Insert (Deep Copy)**: Resolved Use-After-Free memory corruption by implementing `cJSON_Duplicate` in the `db_insert` function. The database now maintains full memory ownership, isolated from the network layer request lifecycle.
+- **Safe Detach-Append Strategy**: Replaced destructive in-place replacement with a Detach & Append strategy for update operations. This ensures internal Linked List pointer integrity during high-concurrency access.
+- **Thread-Safe Iteration**: Replaced standard iteration macros with manual pointer navigation to prevent race conditions when the collection structure is modified by concurrent threads.
+- **SIGSEGV Prevention**: Eliminated the primary cause of Segmentation Faults in the `get_object_item` function, previously triggered by dangling pointer access.
+
 ## [1.4.0] - 2026-01-30
 
 ### Added

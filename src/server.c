@@ -133,7 +133,6 @@ void *handle_client(void *arg)
                 break;
             }
 
-            /* Routing Logic v1.4.0 (Selective Update & Immutable ID handled by core) */
             if (strcmp(act_str, "snapshot") == 0) {
                 db_force_snapshot();
                 send_response(sock, 200, "Snapshot created", NULL);

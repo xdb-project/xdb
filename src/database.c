@@ -35,13 +35,17 @@ static void _rebuild_index(void)
         cJSON_Delete(g_index);
     g_index = cJSON_CreateObject();
 
+    /* Safety Check */
+    if (!root)
+        return;
+
     cJSON *coll = root->child;
     while (coll) {
         cJSON *doc = coll->child;
         while (doc) {
             cJSON *id = cJSON_GetObjectItem(doc, "_id");
             if (id && id->valuestring) {
-                /* Fixed: Changed to Deep Copy (1) to ensure index stability */
+                /* Deep copy to ensure index stability */
                 cJSON_AddItemToObject(g_index, id->valuestring, cJSON_Duplicate(doc, 1));
             }
             doc = doc->next;
@@ -222,6 +226,9 @@ void db_drop_all(void)
 
 /**
  * @brief Inserts a document into a collection.
+ * * @note CRITICAL STABILITY FIX: This function now creates a DEEP COPY
+ * of the input data before storing it. This prevents double-free corruption
+ * when the server network layer frees the request payload.
  *
  * @param[in] coll_name Target collection name.
  * @param[in] data      JSON object representing the document.
@@ -240,17 +247,22 @@ bool db_insert(const char *coll_name, cJSON *data)
         cJSON_AddItemToObject(root, coll_name, coll);
     }
 
+    /* Ensure ID exists */
     if (!cJSON_HasObjectItem(data, "_id")) {
         char *uuid = utils_gen_uuid();
         cJSON_AddStringToObject(data, "_id", uuid);
         free(uuid);
     }
 
-    /* Update index before saving */
+    /* Update index with a deep copy */
     cJSON *id = cJSON_GetObjectItem(data, "_id");
-    cJSON_AddItemToObject(g_index, id->valuestring, cJSON_Duplicate(data, 1));
+    if (id && id->valuestring) {
+        cJSON_AddItemToObject(g_index, id->valuestring, cJSON_Duplicate(data, 1));
+    }
 
-    cJSON_AddItemToArray(coll, data);
+    /* Store DEEP COPY in collection to own the memory */
+    cJSON_AddItemToArray(coll, cJSON_Duplicate(data, 1));
+
     _save_internal();
     pthread_mutex_unlock(&lock);
     return true;
@@ -280,19 +292,19 @@ cJSON *db_find(const char *coll_name, cJSON *query, int limit)
         }
     }
 
-    /* Slow Path: Linear scan for other fields */
+    /* Slow Path: Linear scan */
     cJSON *coll = cJSON_GetObjectItem(root, coll_name);
-    if (coll) {
+    if (coll && cJSON_IsArray(coll)) {
         int count = 0;
-        cJSON *item = NULL;
-        cJSON_ArrayForEach(item, coll)
-        {
+        cJSON *item = coll->child; /* Manual iteration for safety */
+        while (item) {
             if (limit > 0 && count >= limit)
                 break;
             if (query_match(item, query)) {
                 cJSON_AddItemToArray(result, cJSON_Duplicate(item, 1));
                 count++;
             }
+            item = item->next;
         }
     }
     pthread_mutex_unlock(&lock);
@@ -300,7 +312,9 @@ cJSON *db_find(const char *coll_name, cJSON *query, int limit)
 }
 
 /**
- * @brief Updates an existing document in a collection using selective merge.
+ * @brief Updates an existing document using Selective Merge Strategy.
+ * * Supports partial updates. The _id field is immutable.
+ * Uses a "Detach & Append" strategy to prevent SIGSEGV during high-concurrency access.
  *
  * @param[in] coll_name Target collection name.
  * @param[in] id        Document `_id` value (Immutable).
@@ -314,45 +328,58 @@ bool db_update(const char *coll_name, const char *id, cJSON *data)
 
     pthread_mutex_lock(&lock);
 
-    /* Fast check via index */
-    if (!cJSON_HasObjectItem(g_index, id)) {
+    cJSON *coll = cJSON_GetObjectItem(root, coll_name);
+    if (!coll || !cJSON_IsArray(coll)) {
         pthread_mutex_unlock(&lock);
         return false;
     }
 
-    cJSON *coll = cJSON_GetObjectItem(root, coll_name);
-    if (coll) {
-        cJSON *existing_doc = NULL;
-        cJSON_ArrayForEach(existing_doc, coll)
-        {
-            cJSON *itemId = cJSON_GetObjectItem(existing_doc, "_id");
-            if (cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
+    /* Iterate safely through the linked list */
+    cJSON *existing_doc = coll->child;
+    while (existing_doc) {
+        cJSON *itemId = cJSON_GetObjectItem(existing_doc, "_id");
 
-                /* 1. Selective Update (Merge Logic) */
-                cJSON *field = data->child;
-                while (field) {
-                    /* 2. Immutable _id enforcement: ignore any _id in payload */
-                    if (strcmp(field->string, "_id") != 0) {
-                        if (cJSON_HasObjectItem(existing_doc, field->string)) {
-                            cJSON_ReplaceItemInObject(existing_doc, field->string,
-                                                      cJSON_Duplicate(field, 1));
-                        } else {
-                            cJSON_AddItemToObject(existing_doc, field->string,
-                                                  cJSON_Duplicate(field, 1));
-                        }
-                    }
-                    field = field->next;
-                }
+        /* Check ID match */
+        if (itemId && cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
 
-                /* 3. Update index to reflect merged data */
-                cJSON_DeleteItemFromObject(g_index, id);
-                cJSON_AddItemToObject(g_index, id, cJSON_Duplicate(existing_doc, 1));
-
-                _save_internal();
+            /* 1. Create a Deep Copy of the existing document (Memory Isolation) */
+            cJSON *new_doc = cJSON_Duplicate(existing_doc, 1);
+            if (!new_doc) {
                 pthread_mutex_unlock(&lock);
-                return true;
+                return false;
             }
+
+            /* 2. Selective Merge on the Copy */
+            cJSON *field = data->child;
+            while (field) {
+                if (field->string && strcmp(field->string, "_id") != 0) {
+                    cJSON *dup_field = cJSON_Duplicate(field, 1);
+                    if (cJSON_HasObjectItem(new_doc, field->string)) {
+                        cJSON_ReplaceItemInObject(new_doc, field->string, dup_field);
+                    } else {
+                        cJSON_AddItemToObject(new_doc, field->string, dup_field);
+                    }
+                }
+                field = field->next;
+            }
+
+            /* 3. Safe Swap Strategy: Detach old node, Append new node.
+             * This prevents corruption of 'next/prev' pointers in the middle of the list. */
+            cJSON_DetachItemViaPointer(coll, existing_doc);
+            cJSON_Delete(existing_doc); /* Free old memory */
+
+            cJSON_AddItemToArray(coll, new_doc); /* Append updated version to end */
+
+            /* 4. Sync Index */
+            cJSON_DeleteItemFromObject(g_index, id);
+            cJSON_AddItemToObject(g_index, id, cJSON_Duplicate(new_doc, 1));
+
+            _save_internal();
+            pthread_mutex_unlock(&lock);
+            return true;
         }
+
+        existing_doc = existing_doc->next;
     }
 
     pthread_mutex_unlock(&lock);
@@ -389,22 +416,22 @@ bool db_delete(const char *coll_name, const char *id)
 {
     pthread_mutex_lock(&lock);
     cJSON *coll = cJSON_GetObjectItem(root, coll_name);
-    if (coll) {
-        int idx = 0;
-        cJSON *item = NULL;
-        cJSON_ArrayForEach(item, coll)
-        {
+    if (coll && cJSON_IsArray(coll)) {
+        cJSON *item = coll->child;
+        while (item) {
             cJSON *itemId = cJSON_GetObjectItem(item, "_id");
-            if (cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
-                /* Remove from index */
-                cJSON_DeleteItemFromObject(g_index, id);
+            if (itemId && cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
 
-                cJSON_DeleteItemFromArray(coll, idx);
+                /* Safe deletion using detach */
+                cJSON_DetachItemViaPointer(coll, item);
+                cJSON_Delete(item);
+
+                cJSON_DeleteItemFromObject(g_index, id);
                 _save_internal();
                 pthread_mutex_unlock(&lock);
                 return true;
             }
-            idx++;
+            item = item->next;
         }
     }
     pthread_mutex_unlock(&lock);
@@ -421,7 +448,7 @@ int db_count(const char *coll_name)
 {
     pthread_mutex_lock(&lock);
     cJSON *coll = cJSON_GetObjectItem(root, coll_name);
-    int cnt = coll ? cJSON_GetArraySize(coll) : 0;
+    int cnt = (coll && cJSON_IsArray(coll)) ? cJSON_GetArraySize(coll) : 0;
     pthread_mutex_unlock(&lock);
     return cnt;
 }

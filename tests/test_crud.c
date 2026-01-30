@@ -17,10 +17,9 @@
  * * This test ensures that:
  * 1. Documents can be inserted and assigned an automatic `_id`.
  * 2. Documents can be retrieved and matched.
- * 3. Selective Update (v1.4.0) merges fields without data loss.
- * 4. _id remains Immutable even if a new one is provided in the payload.
- * 5. Upsert logic correctly handles new and existing documents.
- * 6. Documents can be removed by their unique identifier.
+ * 3. _id remains Immutable even if a new one is provided in the payload.
+ * 4. Upsert logic correctly handles new and existing documents.
+ * 5. Documents can be removed by their unique identifier.
  */
 TEST_START(test_crud_workflow)
 
@@ -44,7 +43,7 @@ cJSON *id_obj = cJSON_GetObjectItem(item, "_id");
 ASSERT(id_obj != NULL);
 char *id_str = strdup(id_obj->valuestring);
 
-/* 4. Test Selective Update (v1.4.0) */
+/* 4. Test Selective Update */
 cJSON *update_payload = cJSON_CreateObject();
 cJSON_AddNumberToObject(update_payload, "score", 200);       /* Change existing field */
 cJSON_AddStringToObject(update_payload, "rank", "gold");     /* Add new field */
