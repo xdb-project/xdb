@@ -133,7 +133,7 @@ void *handle_client(void *arg)
                 break;
             }
 
-            /* Routing Logic */
+            /* Routing Logic v1.4.0 (Selective Update & Immutable ID handled by core) */
             if (strcmp(act_str, "snapshot") == 0) {
                 db_force_snapshot();
                 send_response(sock, 200, "Snapshot created", NULL);
@@ -150,6 +150,7 @@ void *handle_client(void *arg)
             } else if (strcmp(act_str, "update") == 0) {
                 cJSON *id = cJSON_GetObjectItem(req, "id");
                 cJSON *data = cJSON_DetachItemFromObject(req, "data");
+                /* Core now handles selective merge and ignores _id in 'data' */
                 if (cJSON_IsString(id) && db_update(coll_str, id->valuestring, data)) {
                     send_response(sock, 200, "Updated", data);
                 } else {

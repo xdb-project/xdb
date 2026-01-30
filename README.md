@@ -9,7 +9,7 @@ XDB is a lightweight, thread-safe database engine written in **pure C99**. Desig
 ![C99](https://img.shields.io/badge/Language-C99-blue.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.3.0-blue.svg?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.4.0-blue.svg?style=flat-square)
 ![POSIX](https://img.shields.io/badge/POSIX-Compliant-orange.svg?style=flat-square)
 
 </div>
@@ -469,9 +469,9 @@ Queries documents in a collection with optional filtering and pagination.
 
 ---
 
-### 3. Update Document
+### 3. Update Document (Selective Merge)
 
-Modifies an existing document based on its unique ID. If the ID is not found, the server returns a 404 error.
+Modifies an existing document based on its unique ID. Unlike a full replacement, this version performs a Selective Update (Merge)—only the specified fields in data are updated or added, while other existing fields remain untouched.
 
 **Request:**
 ```json
@@ -480,8 +480,8 @@ Modifies an existing document based on its unique ID. If the ID is not found, th
   "collection": "users",
   "id": "a1b2c3d4e5f6g7h8",
   "data": {
-    "name": "Alice Updated",
-    "status": "active"
+    "status": "online",
+    "last_login": "2026-01-30"
   }
 }
 ```
@@ -490,7 +490,12 @@ Modifies an existing document based on its unique ID. If the ID is not found, th
 ```json
 {
   "status": "ok",
-  "message": "Document updated"
+  "message": "Updated",
+  "data": {
+    "status": "online",
+    "last_login": "2026-01-30",
+    "_id": "a1b2c3d4e5f6g7h8"
+  }
 }
 ```
 
@@ -502,7 +507,9 @@ Modifies an existing document based on its unique ID. If the ID is not found, th
 
 ### 4. Upsert (Update or Insert)
 
-A smart operation that updates a document if the ID exists, or creates a new one if the ID is missing or not found.
+A smart operation that performs a Selective Update if the ID exists, or triggers a New Insertion if the ID is missing or not found.
+
+Request (Update Scenario): If ID a1b2... exists, it merges the score field into the existing document.
 
 **Request (Update Scenario):**
 ```json
@@ -511,7 +518,6 @@ A smart operation that updates a document if the ID exists, or creates a new one
   "collection": "users",
   "id": "a1b2c3d4e5f6g7h8",
   "data": {
-    "name": "Alice Upserted",
     "score": 99
   }
 }
@@ -522,9 +528,9 @@ A smart operation that updates a document if the ID exists, or creates a new one
 {
   "action": "upsert",
   "collection": "users",
-  "id": "new-id-999",
+  "id": "new-user-001",
   "data": {
-    "name": "New User",
+    "name": "Bob",
     "score": 50
   }
 }

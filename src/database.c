@@ -300,11 +300,11 @@ cJSON *db_find(const char *coll_name, cJSON *query, int limit)
 }
 
 /**
- * @brief Updates an existing document in a collection.
+ * @brief Updates an existing document in a collection using selective merge.
  *
  * @param[in] coll_name Target collection name.
- * @param[in] id        Document `_id` value.
- * @param[in] data      New JSON object to replace the existing document.
+ * @param[in] id        Document `_id` value (Immutable).
+ * @param[in] data      JSON object containing fields to merge.
  * @return true if updated, false if the ID was not found.
  */
 bool db_update(const char *coll_name, const char *id, cJSON *data)
@@ -314,7 +314,7 @@ bool db_update(const char *coll_name, const char *id, cJSON *data)
 
     pthread_mutex_lock(&lock);
 
-    /* Fast check via index for O(1) existence verification */
+    /* Fast check via index */
     if (!cJSON_HasObjectItem(g_index, id)) {
         pthread_mutex_unlock(&lock);
         return false;
@@ -322,26 +322,36 @@ bool db_update(const char *coll_name, const char *id, cJSON *data)
 
     cJSON *coll = cJSON_GetObjectItem(root, coll_name);
     if (coll) {
-        int idx = 0;
-        cJSON *item = NULL;
-        cJSON_ArrayForEach(item, coll)
+        cJSON *existing_doc = NULL;
+        cJSON_ArrayForEach(existing_doc, coll)
         {
-            cJSON *itemId = cJSON_GetObjectItem(item, "_id");
+            cJSON *itemId = cJSON_GetObjectItem(existing_doc, "_id");
             if (cJSON_IsString(itemId) && strcmp(itemId->valuestring, id) == 0) {
-                /* Ensure _id is preserved in the new data object */
-                cJSON_DeleteItemFromObject(data, "_id");
-                cJSON_AddStringToObject(data, "_id", id);
 
-                /* Replace in array and synchronize index */
-                cJSON_ReplaceItemInArray(coll, idx, cJSON_Duplicate(data, 1));
+                /* 1. Selective Update (Merge Logic) */
+                cJSON *field = data->child;
+                while (field) {
+                    /* 2. Immutable _id enforcement: ignore any _id in payload */
+                    if (strcmp(field->string, "_id") != 0) {
+                        if (cJSON_HasObjectItem(existing_doc, field->string)) {
+                            cJSON_ReplaceItemInObject(existing_doc, field->string,
+                                                      cJSON_Duplicate(field, 1));
+                        } else {
+                            cJSON_AddItemToObject(existing_doc, field->string,
+                                                  cJSON_Duplicate(field, 1));
+                        }
+                    }
+                    field = field->next;
+                }
+
+                /* 3. Update index to reflect merged data */
                 cJSON_DeleteItemFromObject(g_index, id);
-                cJSON_AddItemToObject(g_index, id, cJSON_Duplicate(data, 1));
+                cJSON_AddItemToObject(g_index, id, cJSON_Duplicate(existing_doc, 1));
 
                 _save_internal();
                 pthread_mutex_unlock(&lock);
                 return true;
             }
-            idx++;
         }
     }
 

@@ -72,14 +72,15 @@ bool db_insert(const char *collection, cJSON *data);
 cJSON *db_find(const char *collection, cJSON *query, int limit);
 
 /**
- * @brief Updates an existing document in a collection.
+ * @brief Performs a selective update on an existing document.
  *
- * Replaces the data of a document identified by its unique `_id`.
- * The `_id` field in the new data will be enforced from the existing document.
+ * Merges new fields into a document identified by its unique `_id`.
+ * @note The `_id` field is immutable and cannot be changed through this operation.
+ * Fields not present in the input data will remain unchanged in the document.
  *
  * @param[in] collection The name of the target collection.
  * @param[in] id         The unique `_id` string of the document to update.
- * @param[in] data       A cJSON object containing the updated document data.
+ * @param[in] data       A cJSON object containing the fields to update or add.
  * @return true if the document was found and updated, false otherwise.
  */
 bool db_update(const char *collection, const char *id, cJSON *data);
@@ -87,7 +88,7 @@ bool db_update(const char *collection, const char *id, cJSON *data);
 /**
  * @brief Updates an existing document or inserts it if not found.
  *
- * If a document with the given `id` exists, it performs an update.
+ * If a document with the given `id` exists, it performs a selective update.
  * If it does not exist, it inserts the data as a new document.
  *
  * @param[in] collection The name of the target collection.
