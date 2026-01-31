@@ -14,14 +14,19 @@
 
 /**
  * @brief Tests the full Create, Read, Update, and Delete cycle.
- * * This test ensures that:
+ *
+ * This test ensures that:
  * 1. Documents can be inserted and assigned an automatic `_id`.
  * 2. Documents can be retrieved and matched.
  * 3. _id remains Immutable even if a new one is provided in the payload.
  * 4. Upsert logic correctly handles new and existing documents.
  * 5. Documents can be removed by their unique identifier.
+ * 6. Snapshots are suppressed during test execution.
  */
 TEST_START(test_crud_workflow)
+
+/* Enable test mode to suppress snapshots and maintain a clean data directory */
+db_set_test_mode(true);
 
 /* 1. Prepare dummy data */
 cJSON *doc = cJSON_CreateObject();
@@ -67,8 +72,6 @@ ASSERT(strcmp(cJSON_GetObjectItem(updated_item, "status")->valuestring, "online"
 /* Check if _id remained the same (Immutability property) */
 ASSERT(strcmp(cJSON_GetObjectItem(updated_item, "_id")->valuestring, id_str) == 0);
 
-cJSON_Delete(updated_results);
-
 /* 5. Test Upsert (Existing Document) */
 cJSON *upsert_data = cJSON_CreateObject();
 cJSON_AddNumberToObject(upsert_data, "score", 999);
@@ -85,6 +88,13 @@ ASSERT_EQ(db_count("users"), 0);
 
 /* Cleanup resources */
 free(id_str);
+cJSON_Delete(doc);
 cJSON_Delete(results);
+cJSON_Delete(update_payload);
+cJSON_Delete(updated_results);
+cJSON_Delete(upsert_data);
+
+/* Restore normal mode if needed for subsequent tests */
+db_set_test_mode(false);
 
 TEST_END

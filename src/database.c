@@ -24,6 +24,7 @@ static cJSON *root = NULL;                               /**< In-memory represen
 static cJSON *g_index = NULL;                            /**< Global index for O(1) ID lookups. */
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; /**< Monitor for thread safety. */
 static int g_op_counter = 0;                             /**< Counter to trigger snapshots. */
+static bool g_test_mode = false; /**< Flag to suppress snapshots during tests. */
 
 /**
  * @brief Rebuilds the in-memory index for fast lookups.
@@ -119,11 +120,13 @@ static void _save_internal(void)
 
         /* Atomic swap of temporary file with actual file */
         if (rename(tmp_path, g_db_path) == 0) {
-            /* Trigger snapshotting logic every 5 operations */
-            g_op_counter++;
-            if (g_op_counter >= 5) {
-                _create_snapshot();
-                g_op_counter = 0;
+            /* Trigger snapshotting logic every 5 operations unless in test mode */
+            if (!g_test_mode) {
+                g_op_counter++;
+                if (g_op_counter >= 5) {
+                    _create_snapshot();
+                    g_op_counter = 0;
+                }
             }
         } else {
             perror("Failed to replace database file");
@@ -193,6 +196,18 @@ void db_cleanup(void)
         cJSON_Delete(g_index);
         g_index = NULL;
     }
+    pthread_mutex_unlock(&lock);
+}
+
+/**
+ * @brief Enables or disables testing mode.
+ *
+ * @param[in] enable True to suppress snapshots, false for normal operation.
+ */
+void db_set_test_mode(bool enable)
+{
+    pthread_mutex_lock(&lock);
+    g_test_mode = enable;
     pthread_mutex_unlock(&lock);
 }
 

@@ -32,6 +32,16 @@ void db_init(const char *filepath);
 void db_cleanup(void);
 
 /**
+ * @brief Enables or disables testing mode.
+ *
+ * In testing mode, automatic snapshots and persistent maintenance tasks
+ * are suppressed to prevent storage pollution during unit tests.
+ *
+ * @param[in] enable True to suppress snapshots, false for normal operation.
+ */
+void db_set_test_mode(bool enable);
+
+/**
  * @brief Forces an immediate snapshot of the database.
  *
  * Manually triggers a backup of the current production data to a timestamped

@@ -9,7 +9,7 @@ XDB is a lightweight, thread-safe database engine written in **pure C99**. Desig
 ![C99](https://img.shields.io/badge/Language-C99-blue.svg?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)
-![Version](https://img.shields.io/badge/Version-1.4.1-blue.svg?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.4.2-blue.svg?style=flat-square)
 ![POSIX](https://img.shields.io/badge/POSIX-Compliant-orange.svg?style=flat-square)
 
 </div>

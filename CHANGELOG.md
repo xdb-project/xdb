@@ -4,6 +4,14 @@ All notable changes to the **XDB-Project** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-02-01
+
+### Added
+- **Test Mode API**: Introduced `db_set_test_mode()` to suppress background maintenance tasks, ensuring a cleaner environment during automated testing.
+
+### Fixed
+- **Storage Pollution**: Prevented snapshot triggering during unit tests to avoid unwanted data persistence in the `data/` directory.
+
 ## [1.4.1] - 2026-01-31
 
 ### Fixed (Stability & Memory Integrity)
